@@ -20,20 +20,12 @@ public class MapRegistrationRepository implements RegistrationRepository {
 			Registration registration = findOne(id);
 			if (registration != null) {
 				this.registrations.remove(id);
-				shutdown(registration);
 			}
 		}
 	}
 
-	private void shutdown(Registration registration) {
-		registration.getEurekaClient().shutdown();
-	}
-
 	@Override
 	public void deleteAll() {
-		for (Registration registration : this.registrations.values()) {
-			shutdown(registration);
-		}
 		this.registrations.clear();
 	}
 

@@ -11,15 +11,6 @@ import java.util.Collection;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
-import org.springframework.beans.BeansException;
-import org.springframework.cloud.commons.util.InetUtils;
-import org.springframework.cloud.netflix.eureka.CloudEurekaClient;
-import org.springframework.cloud.netflix.eureka.EurekaClientConfigBean;
-import org.springframework.cloud.netflix.eureka.EurekaInstanceConfigBean;
-import org.springframework.cloud.netflix.eureka.InstanceInfoFactory;
-import org.springframework.cloud.netflix.eureka.MutableDiscoveryClientOptionalArgs;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -29,23 +20,18 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.netflix.appinfo.ApplicationInfoManager;
-import com.netflix.appinfo.InstanceInfo;
-
 /**
  * @author Spencer Gibb
  */
 @RestController
-public class EurekaLiteController implements ApplicationContextAware, Closeable {
+public class EurekaLiteController implements Closeable {
 
-	private ApplicationContext context;
-
-	private InetUtils inetUtils;
+	private Eureka eureka;
 
 	private RegistrationRepository registrations;
 
-	public EurekaLiteController(InetUtils inetUtils, RegistrationRepository registrations) {
-		this.inetUtils = inetUtils;
+	public EurekaLiteController(Eureka eureka, RegistrationRepository registrations) {
+		this.eureka = eureka;
 		this.registrations = registrations;
 	}
 
@@ -56,28 +42,8 @@ public class EurekaLiteController implements ApplicationContextAware, Closeable 
 			return ResponseEntity.status(HttpStatus.CONFLICT).body("Already registered: " + application);
 		}
 
-		EurekaInstanceConfigBean instanceConfig = new EurekaInstanceConfigBean(inetUtils);
-		instanceConfig.setAppname(application.getName());
-		instanceConfig.setVirtualHostName(application.getName());
-		instanceConfig.setInstanceId(application.getInstance_id());
-		instanceConfig.setHostname(application.getHostname());
-		instanceConfig.setNonSecurePort(application.getPort());
-
-		InstanceInfo instanceInfo = new InstanceInfoFactory().create(instanceConfig);
-
-		ApplicationInfoManager applicationInfoManager = new ApplicationInfoManager(instanceConfig, instanceInfo);
-
-		EurekaClientConfigBean clientConfig = new EurekaClientConfigBean();
-		CloudEurekaClient eurekaClient = new CloudEurekaClient(applicationInfoManager, clientConfig, new MutableDiscoveryClientOptionalArgs(), this.context);
-
-		Registration registration = new Registration(applicationInfoManager, eurekaClient, application);
-
-		eurekaClient.registerHealthCheck(new ApplicationHealthCheckHandler(registration.getApplicationStatus()));
-
+		Registration registration = this.eureka.register(application);
 		this.registrations.save(registration);
-
-		applicationInfoManager.setInstanceStatus(InstanceInfo.InstanceStatus.UP);
-
 
 		URI location = new URI(request.getRequestURI() + "/" + application.getName() + "/" + application.getInstance_id());
 		return ResponseEntity.created(location).build();
@@ -90,11 +56,13 @@ public class EurekaLiteController implements ApplicationContextAware, Closeable 
 			return ResponseEntity.notFound().build();
 		}
 
+		Registration registration = this.registrations.findOne(registrationKey);
+		this.eureka.shutdown(registration);
+
 		this.registrations.delete(registrationKey);
 
 		return ResponseEntity.noContent().build();
 	}
-
 
 	@RequestMapping(path = "/apps/{name}/{instanceId}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity getInstance(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId) {
@@ -120,7 +88,7 @@ public class EurekaLiteController implements ApplicationContextAware, Closeable 
 	public Collection<ApplicationStatus> listApps(@PathVariable("name") String name) {
 		ArrayList<ApplicationStatus> applications = new ArrayList<>();
 		for (Registration registration : this.registrations.finalAll()) {
-			if (registration.getApplicationStatus().getApplication().getName().equals(name)) {
+			if (registration.getApplicationName().equals(name)) {
 				applications.add(registration.getApplicationStatus());
 			}
 		}
@@ -129,11 +97,9 @@ public class EurekaLiteController implements ApplicationContextAware, Closeable 
 
 	@Override
 	public void close() throws IOException {
+		for (Registration registration : this.registrations.finalAll()) {
+			this.eureka.shutdown(registration);
+		}
 		this.registrations.deleteAll();
-	}
-
-	@Override
-	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-		context = applicationContext;
 	}
 }

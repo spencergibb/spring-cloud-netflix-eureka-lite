@@ -23,4 +23,8 @@ public class Registration {
 	public String getRegistrationKey() {
 		return this.applicationStatus.getApplication().getRegistrationKey();
 	}
+
+	public String getApplicationName() {
+		return this.applicationStatus.getApplication().getName();
+	}
 }

@@ -38,8 +38,14 @@ public class EurekaLiteApplication {
 	}
 
 	@Bean
-	public EurekaLiteController eurekaLiteController(InetUtils inetUtils, RegistrationRepository repository) {
-		return new EurekaLiteController(inetUtils, repository);
+	@ConditionalOnMissingBean
+	public Eureka eureka(InetUtils inetUtils) {
+		return new Eureka(inetUtils);
+	}
+
+	@Bean
+	public EurekaLiteController eurekaLiteController(Eureka eureka, RegistrationRepository repository) {
+		return new EurekaLiteController(eureka, repository);
 	}
 
 	public static void main(String[] args) {
