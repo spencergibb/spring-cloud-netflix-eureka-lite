@@ -7,19 +7,19 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.concurrent.ConcurrentHashMap;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.BeansException;
 import org.springframework.cloud.commons.util.InetUtils;
 import org.springframework.cloud.netflix.eureka.CloudEurekaClient;
 import org.springframework.cloud.netflix.eureka.EurekaClientConfigBean;
 import org.springframework.cloud.netflix.eureka.EurekaInstanceConfigBean;
 import org.springframework.cloud.netflix.eureka.InstanceInfoFactory;
 import org.springframework.cloud.netflix.eureka.MutableDiscoveryClientOptionalArgs;
-import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -36,20 +36,23 @@ import com.netflix.appinfo.InstanceInfo;
  * @author Spencer Gibb
  */
 @RestController
-public class EurekaLiteController implements Closeable {
+public class EurekaLiteController implements ApplicationContextAware, Closeable {
 
-	@Autowired
-	ConfigurableApplicationContext context;
+	private ApplicationContext context;
 
-	@Autowired
-	InetUtils inetUtils;
+	private InetUtils inetUtils;
 
-	ConcurrentHashMap<String, Registration> registrations = new ConcurrentHashMap<>();
+	private RegistrationRepository registrations;
+
+	public EurekaLiteController(InetUtils inetUtils, RegistrationRepository registrations) {
+		this.inetUtils = inetUtils;
+		this.registrations = registrations;
+	}
 
 	@RequestMapping(path = "/apps", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity register(@Valid @RequestBody Application application, HttpServletRequest request) throws Exception {
 
-		if (registrations.containsKey(application.getRegistrationKey())) {
+		if (registrations.exists(application.getRegistrationKey())) {
 			return ResponseEntity.status(HttpStatus.CONFLICT).body("Already registered: " + application);
 		}
 
@@ -71,7 +74,7 @@ public class EurekaLiteController implements Closeable {
 
 		eurekaClient.registerHealthCheck(new ApplicationHealthCheckHandler(registration.getApplicationStatus()));
 
-		this.registrations.put(application.getRegistrationKey(), registration);
+		this.registrations.save(registration);
 
 		applicationInfoManager.setInstanceStatus(InstanceInfo.InstanceStatus.UP);
 
@@ -83,12 +86,11 @@ public class EurekaLiteController implements Closeable {
 	@RequestMapping(path = "/apps/{name}/{instanceId}", method = RequestMethod.DELETE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity unregister(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId) {
 		String registrationKey = computeRegistrationKey(name, instanceId);
-		if (!this.registrations.containsKey(registrationKey)) {
+		if (!this.registrations.exists(registrationKey)) {
 			return ResponseEntity.notFound().build();
 		}
 
-		Registration registration = this.registrations.get(registrationKey);
-		close(registration);
+		this.registrations.delete(registrationKey);
 
 		return ResponseEntity.noContent().build();
 	}
@@ -97,18 +99,18 @@ public class EurekaLiteController implements Closeable {
 	@RequestMapping(path = "/apps/{name}/{instanceId}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity getInstance(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId) {
 		String registrationKey = computeRegistrationKey(name, instanceId);
-		if (!this.registrations.containsKey(registrationKey)) {
+		if (!this.registrations.exists(registrationKey)) {
 			return ResponseEntity.notFound().build();
 		}
 
-		return ResponseEntity.ok(this.registrations.get(registrationKey).getApplicationStatus());
+		return ResponseEntity.ok(this.registrations.findOne(registrationKey).getApplicationStatus());
 	}
 
 
 	@RequestMapping(path = "/apps", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Collection<ApplicationStatus> listApps() {
 		ArrayList<ApplicationStatus> applications = new ArrayList<>();
-		for (Registration registration : this.registrations.values()) {
+		for (Registration registration : this.registrations.finalAll()) {
 			applications.add(registration.getApplicationStatus());
 		}
 		return applications;
@@ -117,7 +119,7 @@ public class EurekaLiteController implements Closeable {
 	@RequestMapping(path = "/apps/{name}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Collection<ApplicationStatus> listApps(@PathVariable("name") String name) {
 		ArrayList<ApplicationStatus> applications = new ArrayList<>();
-		for (Registration registration : this.registrations.values()) {
+		for (Registration registration : this.registrations.finalAll()) {
 			if (registration.getApplicationStatus().getApplication().getName().equals(name)) {
 				applications.add(registration.getApplicationStatus());
 			}
@@ -125,15 +127,13 @@ public class EurekaLiteController implements Closeable {
 		return applications;
 	}
 
-	void close(Registration registration) {
-		registration.getEurekaClient().shutdown();
+	@Override
+	public void close() throws IOException {
+		this.registrations.deleteAll();
 	}
 
 	@Override
-	public void close() throws IOException {
-		for (Registration registration : this.registrations.values()) {
-			close(registration);
-		}
-		this.registrations.clear();
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		context = applicationContext;
 	}
 }

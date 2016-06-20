@@ -19,4 +19,8 @@ public class Registration {
 	public Registration(ApplicationInfoManager applicationInfoManager, EurekaClient eurekaClient, Application application) {
 		this(applicationInfoManager, eurekaClient, new ApplicationStatus(application, null));
 	}
+
+	public String getRegistrationKey() {
+		return this.applicationStatus.getApplication().getRegistrationKey();
+	}
 }

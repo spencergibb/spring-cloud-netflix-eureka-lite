@@ -18,7 +18,9 @@
 package org.springframework.cloud.netflix.eureka.lite;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.cloud.commons.util.InetUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,8 +32,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class EurekaLiteApplication {
 
 	@Bean
-	public EurekaLiteController eurekaLiteController() {
-		return new EurekaLiteController();
+	@ConditionalOnMissingBean
+	public RegistrationRepository registrationRepository() {
+		return new MapRegistrationRepository();
+	}
+
+	@Bean
+	public EurekaLiteController eurekaLiteController(InetUtils inetUtils, RegistrationRepository repository) {
+		return new EurekaLiteController(inetUtils, repository);
 	}
 
 	public static void main(String[] args) {
