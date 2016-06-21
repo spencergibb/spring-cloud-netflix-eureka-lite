@@ -53,7 +53,7 @@ public class EurekaLiteApplicationTests {
 	}
 
 	private Application getApplication(String name, String instanceId, int port) {
-		return new Application(name, instanceId, "localhost", port, URI.create("http://localhost:"+port+"/health.json"));
+		return new Application(name, instanceId, "localhost", port);
 	}
 
 	@Configuration

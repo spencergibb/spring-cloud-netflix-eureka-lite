@@ -1,5 +1,19 @@
 package org.springframework.cloud.netflix.eureka.lite;
 
+import java.util.Collections;
+import java.util.concurrent.TimeUnit;
+
+import org.springframework.beans.BeansException;
+import org.springframework.cloud.commons.util.InetUtils;
+import org.springframework.cloud.netflix.eureka.CloudEurekaClient;
+import org.springframework.cloud.netflix.eureka.EurekaClientConfigBean;
+import org.springframework.cloud.netflix.eureka.EurekaInstanceConfigBean;
+import org.springframework.cloud.netflix.eureka.InstanceInfoFactory;
+import org.springframework.cloud.netflix.eureka.MutableDiscoveryClientOptionalArgs;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.http.HttpStatus;
+
 import com.netflix.appinfo.ApplicationInfoManager;
 import com.netflix.appinfo.InstanceInfo;
 import com.netflix.discovery.shared.Applications;
@@ -13,20 +27,8 @@ import com.netflix.discovery.shared.transport.EurekaTransportConfig;
 import com.netflix.discovery.shared.transport.TransportClientFactory;
 import com.netflix.discovery.shared.transport.jersey.TransportClientFactories;
 import com.sun.jersey.api.client.filter.ClientFilter;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeansException;
-import org.springframework.cloud.commons.util.InetUtils;
-import org.springframework.cloud.netflix.eureka.CloudEurekaClient;
-import org.springframework.cloud.netflix.eureka.EurekaClientConfigBean;
-import org.springframework.cloud.netflix.eureka.EurekaInstanceConfigBean;
-import org.springframework.cloud.netflix.eureka.InstanceInfoFactory;
-import org.springframework.cloud.netflix.eureka.MutableDiscoveryClientOptionalArgs;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
-import org.springframework.http.HttpStatus;
 
-import java.util.Collections;
-import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author Spencer Gibb
@@ -60,8 +62,6 @@ public class Eureka implements ApplicationContextAware {
 		EurekaTransport transport = createTransport(clientConfig, instanceInfo, eurekaClient);
 
 		Registration registration = new Registration(applicationInfoManager, eurekaClient, transport, application);
-
-		eurekaClient.registerHealthCheck(new ApplicationHealthCheckHandler(registration.getApplicationStatus()));
 
 		applicationInfoManager.setInstanceStatus(InstanceInfo.InstanceStatus.UP);
 

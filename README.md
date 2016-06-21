@@ -3,25 +3,18 @@
 Run `EurekaLiteApplication` with `--server.port=8762`
 
 ```
-$ cd src/test/resources/test/client1
-$ twistd -no web --path=. --port=8081
+$ http POST :8762/apps name=myapp instance_id=app1 hostname=localhost port=8081
+$ http POST :8762/apps name=myapp instance_id=app2 hostname=localhost port=8082
+$ http POST :8762/apps name=anotherapp instance_id=anotherapp1 hostname=localhost port=8181
 
 # in another terminal
-$ cd src/test/resources/test/client2
-$ twistd -no web --path=. --port=8082
+$ watch -n30 http PUT :8762/apps/myapp/app1
 
-# in another terminal
-$ cd src/test/resources/test/client3
-$ twistd -no web --path=. --port=8181
-
-# in another terminal
-$ http POST :8762/apps name=myapp instance_id=app1 hostname=localhost port=8081 health_uri=http://localhost:8081/health.json
-$ http POST :8762/apps name=myapp instance_id=app2 hostname=localhost port=8082 health_uri=http://localhost:8082/health.json
-$ http POST :8762/apps name=anotherapp instance_id=anotherapp1 hostname=localhost port=8181 health_uri=http://localhost:8181/health.json
+# eventually anotherapp/anotherapp1 will auto unregister from eureka because it isn't sending heartbeats
 
 $ http DELETE :8762/apps/myapp/app2
 
-$ http GET :8762/apps                                                                              (10055)[16:35:57]
+$ http GET :8762/apps
 HTTP/1.1 200 OK
 Content-Type: application/json;charset=UTF-8
 Date: Mon, 20 Jun 2016 22:35:59 GMT
@@ -32,7 +25,6 @@ X-Application-Context: application:8762
 [
     {
         "application": {
-            "health_uri": "http://localhost:8082/health.json",
             "hostname": "localhost",
             "instance_id": "app2",
             "name": "myapp",
@@ -42,7 +34,6 @@ X-Application-Context: application:8762
     },
     {
         "application": {
-            "health_uri": "http://localhost:8081/health.json",
             "hostname": "localhost",
             "instance_id": "app1",
             "name": "myapp",
@@ -52,7 +43,6 @@ X-Application-Context: application:8762
     },
     {
         "application": {
-            "health_uri": "http://localhost:8181/health.json",
             "hostname": "localhost",
             "instance_id": "anotherapp1",
             "name": "anotherapp",
@@ -73,7 +63,6 @@ X-Application-Context: application:8762
 [
     {
         "application": {
-            "health_uri": "http://localhost:8181/health.json",
             "hostname": "localhost",
             "instance_id": "anotherapp1",
             "name": "anotherapp",
@@ -93,7 +82,6 @@ X-Application-Context: application:8762
 
 {
     "application": {
-        "health_uri": "http://localhost:8081/health.json",
         "hostname": "localhost",
         "instance_id": "app1",
         "name": "myapp",
@@ -101,9 +89,11 @@ X-Application-Context: application:8762
     },
     "status": "UP"
 }
+
 ```
 
 ## Todo
 
 - [X] Repository Interface
-- [ ] Distributed Heartbeat
+- [X] Distributed Heartbeat
+- [ ] @EnableEurekaLite
