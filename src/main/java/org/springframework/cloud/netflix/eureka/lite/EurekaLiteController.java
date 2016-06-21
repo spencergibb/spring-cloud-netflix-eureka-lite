@@ -26,13 +26,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class EurekaLiteController implements Closeable {
 
-	private Eureka eureka;
+	private final Eureka eureka;
+	private final RegistrationRepository registrations;
+	private final EurekaLiteProperties properties;
 
-	private RegistrationRepository registrations;
-
-	public EurekaLiteController(Eureka eureka, RegistrationRepository registrations) {
+	public EurekaLiteController(Eureka eureka, RegistrationRepository registrations, EurekaLiteProperties properties) {
 		this.eureka = eureka;
 		this.registrations = registrations;
+		this.properties = properties;
 	}
 
 	@RequestMapping(path = "/apps", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -74,6 +75,19 @@ public class EurekaLiteController implements Closeable {
 		return ResponseEntity.ok(this.registrations.findOne(registrationKey).getApplicationStatus());
 	}
 
+	@RequestMapping(path = "/apps/{name}/{instanceId}", method = RequestMethod.PUT, produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity renew(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId) {
+		String registrationKey = computeRegistrationKey(name, instanceId);
+		if (!this.registrations.exists(registrationKey)) {
+			return ResponseEntity.notFound().build();
+		}
+
+		Registration registration = this.registrations.findOne(registrationKey);
+		this.eureka.renew(registration);
+
+		return ResponseEntity.ok(registration.getApplicationStatus());
+	}
+
 
 	@RequestMapping(path = "/apps", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Collection<ApplicationStatus> listApps() {
@@ -97,9 +111,11 @@ public class EurekaLiteController implements Closeable {
 
 	@Override
 	public void close() throws IOException {
-		for (Registration registration : this.registrations.finalAll()) {
-			this.eureka.shutdown(registration);
+		if (this.properties.isUnregisterOnShutdown()) {
+			for (Registration registration : this.registrations.finalAll()) {
+				this.eureka.shutdown(registration);
+			}
+			this.registrations.deleteAll();
 		}
-		this.registrations.deleteAll();
 	}
 }

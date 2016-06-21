@@ -80,7 +80,7 @@ public class EurekaLiteApplicationTests {
 				status = InstanceInfo.InstanceStatus.DOWN;
 			}
 			ApplicationStatus applicationStatus = new ApplicationStatus(application, status);
-			Registration registration = new Registration(applicationInfoManager, eurekaClient, applicationStatus);
+			Registration registration = new Registration(applicationInfoManager, eurekaClient, null, applicationStatus);
 			return registration;
 		}
 
