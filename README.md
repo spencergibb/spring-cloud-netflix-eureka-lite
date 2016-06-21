@@ -105,4 +105,5 @@ X-Application-Context: application:8762
 
 ## Todo
 
-- [ ] Repository Interface
+- [X] Repository Interface
+- [ ] Distributed Heartbeat
