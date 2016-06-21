@@ -1,0 +1,8 @@
+server.port: 8762
+
+eureka.lite.unregisterOnShutdown: true
+
+logging:
+  level:
+    org.springframework.cloud.netflix.eureka.lite: DEBUG
+

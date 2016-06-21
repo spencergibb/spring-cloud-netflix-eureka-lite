@@ -1,6 +1,6 @@
 # Eureka Lite
 
-Run `EurekaLiteApplication` with `--server.port=8762`
+Run `EurekaLiteApplication` which has the `@EnableEurekaLite` annotation.
 
 ```
 $ http POST :8762/apps name=myapp instance_id=app1 hostname=localhost port=8081
@@ -96,4 +96,5 @@ X-Application-Context: application:8762
 
 - [X] Repository Interface
 - [X] Distributed Heartbeat
-- [ ] @EnableEurekaLite
+- [X] @EnableEurekaLite
+- [ ] RedisRegistrationRepository
