@@ -1,9 +1,7 @@
 package org.springframework.cloud.netflix.eureka.lite;
 
-import com.netflix.appinfo.ApplicationInfoManager;
 import com.netflix.appinfo.InstanceInfo;
-import com.netflix.discovery.EurekaClient;
-import com.netflix.discovery.shared.transport.EurekaHttpClient;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -13,13 +11,11 @@ import lombok.Data;
 @Data
 @AllArgsConstructor
 public class Registration {
-	private final ApplicationInfoManager applicationInfoManager;
-	private final EurekaClient eurekaClient;
-	private final EurekaTransport eurekaTransport;
+	private final InstanceInfo instanceInfo;
 	private final ApplicationStatus applicationStatus;
 
-	public Registration(ApplicationInfoManager applicationInfoManager, EurekaClient eurekaClient, EurekaTransport eurekaTransport, Application application) {
-		this(applicationInfoManager, eurekaClient, eurekaTransport, new ApplicationStatus(application, null));
+	public Registration(InstanceInfo instanceInfo, Application application) {
+		this(instanceInfo, new ApplicationStatus(application, null));
 	}
 
 	public String getRegistrationKey() {
@@ -28,13 +24,5 @@ public class Registration {
 
 	public String getApplicationName() {
 		return this.applicationStatus.getApplication().getName();
-	}
-
-	public InstanceInfo getInstanceInfo() {
-		return applicationInfoManager.getInfo();
-	}
-
-	public EurekaHttpClient getEurekaHttpClient() {
-		return eurekaTransport.getEurekaHttpClient();
 	}
 }

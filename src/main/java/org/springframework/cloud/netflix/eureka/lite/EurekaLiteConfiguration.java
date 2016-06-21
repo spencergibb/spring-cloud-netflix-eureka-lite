@@ -20,8 +20,10 @@ package org.springframework.cloud.netflix.eureka.lite;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.commons.util.InetUtils;
+import org.springframework.cloud.netflix.eureka.CloudEurekaClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 
 /**
  * @author Spencer Gibb
@@ -42,8 +44,8 @@ public class EurekaLiteConfiguration {
 
 	@Bean
 	@ConditionalOnMissingBean
-	public Eureka eureka(InetUtils inetUtils) {
-		return new Eureka(inetUtils);
+	public Eureka eureka(InetUtils inetUtils, @Lazy CloudEurekaClient eurekaClient) {
+		return new Eureka(inetUtils, eurekaClient);
 	}
 
 	@Bean

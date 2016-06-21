@@ -10,6 +10,9 @@ import org.springframework.boot.test.SpringApplicationConfiguration;
 import org.springframework.boot.test.TestRestTemplate;
 import org.springframework.boot.test.WebIntegrationTest;
 import org.springframework.cloud.commons.util.InetUtils;
+import org.springframework.cloud.netflix.eureka.CloudEurekaClient;
+import org.springframework.cloud.netflix.eureka.EurekaInstanceConfigBean;
+import org.springframework.cloud.netflix.eureka.InstanceInfoFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ParameterizedTypeReference;
@@ -67,20 +70,29 @@ public class EurekaLiteApplicationTests {
 
 	static class TestEureka extends Eureka {
 
+		private InetUtils inetUtils;
+
 		public TestEureka(InetUtils inetUtils) {
-			super(inetUtils);
+			super(inetUtils, mock(CloudEurekaClient.class));
+			this.inetUtils = inetUtils;
 		}
 
 		@Override
 		public Registration register(Application application) {
-			ApplicationInfoManager applicationInfoManager = mock(ApplicationInfoManager.class);
-			EurekaClient eurekaClient = mock(EurekaClient.class);
+			EurekaInstanceConfigBean instanceConfig = new EurekaInstanceConfigBean(inetUtils);
+			instanceConfig.setAppname(application.getName());
+			instanceConfig.setVirtualHostName(application.getName());
+			instanceConfig.setInstanceId(application.getInstance_id());
+			instanceConfig.setHostname(application.getHostname());
+			instanceConfig.setNonSecurePort(application.getPort());
+
+			InstanceInfo instanceInfo = new InstanceInfoFactory().create(instanceConfig);
 			InstanceInfo.InstanceStatus status = InstanceInfo.InstanceStatus.UP;
 			if (application.getInstance_id().endsWith("down")) {
 				status = InstanceInfo.InstanceStatus.DOWN;
 			}
 			ApplicationStatus applicationStatus = new ApplicationStatus(application, status);
-			Registration registration = new Registration(applicationInfoManager, eurekaClient, null, applicationStatus);
+			Registration registration = new Registration(instanceInfo, applicationStatus);
 			return registration;
 		}
 
