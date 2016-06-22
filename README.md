@@ -97,4 +97,4 @@ X-Application-Context: application:8762
 - [X] Repository Interface
 - [X] Distributed Heartbeat
 - [X] @EnableEurekaLite
-- [ ] RedisRegistrationRepository
+- [X] RedisRegistrationRepository

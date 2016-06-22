@@ -92,7 +92,7 @@ public class EurekaLiteController implements Closeable {
 	@RequestMapping(path = "/apps", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Collection<ApplicationStatus> listApps() {
 		ArrayList<ApplicationStatus> applications = new ArrayList<>();
-		for (Registration registration : this.registrations.finalAll()) {
+		for (Registration registration : this.registrations.findAll()) {
 			applications.add(registration.getApplicationStatus());
 		}
 		return applications;
@@ -101,7 +101,7 @@ public class EurekaLiteController implements Closeable {
 	@RequestMapping(path = "/apps/{name}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Collection<ApplicationStatus> listApps(@PathVariable("name") String name) {
 		ArrayList<ApplicationStatus> applications = new ArrayList<>();
-		for (Registration registration : this.registrations.finalAll()) {
+		for (Registration registration : this.registrations.findAll()) {
 			if (registration.getApplicationName().equals(name)) {
 				applications.add(registration.getApplicationStatus());
 			}
@@ -112,7 +112,7 @@ public class EurekaLiteController implements Closeable {
 	@Override
 	public void close() throws IOException {
 		if (this.properties.isUnregisterOnShutdown()) {
-			for (Registration registration : this.registrations.finalAll()) {
+			for (Registration registration : this.registrations.findAll()) {
 				this.eureka.shutdown(registration);
 			}
 			this.registrations.deleteAll();

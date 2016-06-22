@@ -1,8 +1,15 @@
 package org.springframework.cloud.netflix.eureka.lite;
 
-import com.netflix.appinfo.ApplicationInfoManager;
-import com.netflix.appinfo.InstanceInfo;
-import com.netflix.discovery.EurekaClient;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.mock;
+
+import java.net.URI;
+import java.util.List;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,8 +18,6 @@ import org.springframework.boot.test.TestRestTemplate;
 import org.springframework.boot.test.WebIntegrationTest;
 import org.springframework.cloud.commons.util.InetUtils;
 import org.springframework.cloud.netflix.eureka.CloudEurekaClient;
-import org.springframework.cloud.netflix.eureka.EurekaInstanceConfigBean;
-import org.springframework.cloud.netflix.eureka.InstanceInfoFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ParameterizedTypeReference;
@@ -21,16 +26,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import java.net.URI;
-import java.util.List;
-
-import static org.mockito.Mockito.mock;
-import static org.hamcrest.Matchers.*;
-import static org.junit.Assert.assertThat;
+import com.netflix.appinfo.InstanceInfo;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringApplicationConfiguration(classes = {EurekaLiteApplicationTests.TestConfig.class, EurekaLiteApplication.class })
-@WebIntegrationTest(randomPort = true)
+@WebIntegrationTest(randomPort = true, value = "eureka.lite.redis.enabled=false")
 public class EurekaLiteApplicationTests {
 
 	@Value("${local.server.port}")
@@ -79,14 +79,7 @@ public class EurekaLiteApplicationTests {
 
 		@Override
 		public Registration register(Application application) {
-			EurekaInstanceConfigBean instanceConfig = new EurekaInstanceConfigBean(inetUtils);
-			instanceConfig.setAppname(application.getName());
-			instanceConfig.setVirtualHostName(application.getName());
-			instanceConfig.setInstanceId(application.getInstance_id());
-			instanceConfig.setHostname(application.getHostname());
-			instanceConfig.setNonSecurePort(application.getPort());
-
-			InstanceInfo instanceInfo = new InstanceInfoFactory().create(instanceConfig);
+			InstanceInfo instanceInfo = getInstanceInfo(application);
 			InstanceInfo.InstanceStatus status = InstanceInfo.InstanceStatus.UP;
 			if (application.getInstance_id().endsWith("down")) {
 				status = InstanceInfo.InstanceStatus.DOWN;

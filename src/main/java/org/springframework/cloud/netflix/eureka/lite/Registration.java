@@ -15,7 +15,7 @@ public class Registration {
 	private final ApplicationStatus applicationStatus;
 
 	public Registration(InstanceInfo instanceInfo, Application application) {
-		this(instanceInfo, new ApplicationStatus(application, null));
+		this(instanceInfo, new ApplicationStatus(application, InstanceInfo.InstanceStatus.UP));
 	}
 
 	public String getRegistrationKey() {

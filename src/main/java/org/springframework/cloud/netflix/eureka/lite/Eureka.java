@@ -56,16 +56,7 @@ public class Eureka implements ApplicationContextAware {
 	public Registration register(Application application) {
 		long start = System.currentTimeMillis();
 		log.debug("Starting registration of {}", application);
-		EurekaInstanceConfigBean instanceConfig = new EurekaInstanceConfigBean(inetUtils);
-		instanceConfig.setInstanceEnabledOnit(true);
-
-		instanceConfig.setAppname(application.getName());
-		instanceConfig.setVirtualHostName(application.getName());
-		instanceConfig.setInstanceId(application.getInstance_id());
-		instanceConfig.setHostname(application.getHostname());
-		instanceConfig.setNonSecurePort(application.getPort());
-
-		InstanceInfo instanceInfo = new InstanceInfoFactory().create(instanceConfig);
+		InstanceInfo instanceInfo = getInstanceInfo(application);
 
 		Registration registration = new Registration(instanceInfo, application);
 
@@ -75,6 +66,27 @@ public class Eureka implements ApplicationContextAware {
 		register(registration);
 
 		return registration;
+	}
+
+	public InstanceInfo getInstanceInfo(Application application, long lastUpdatedTimestamp, long lastDirtyTimestamp) {
+		InstanceInfo instanceInfo = getInstanceInfo(application);
+		instanceInfo = new InstanceInfo.Builder(instanceInfo)
+				.setLastDirtyTimestamp(lastDirtyTimestamp)
+				.setLastUpdatedTimestamp(lastUpdatedTimestamp)
+				.build();
+		return instanceInfo;
+	}
+
+	public InstanceInfo getInstanceInfo(Application application) {
+		EurekaInstanceConfigBean instanceConfig = new EurekaInstanceConfigBean(inetUtils);
+		instanceConfig.setInstanceEnabledOnit(true);
+		instanceConfig.setAppname(application.getName());
+		instanceConfig.setVirtualHostName(application.getName());
+		instanceConfig.setInstanceId(application.getInstance_id());
+		instanceConfig.setHostname(application.getHostname());
+		instanceConfig.setNonSecurePort(application.getPort());
+
+		return new InstanceInfoFactory().create(instanceConfig);
 	}
 
 	public EurekaTransport createTransport() {

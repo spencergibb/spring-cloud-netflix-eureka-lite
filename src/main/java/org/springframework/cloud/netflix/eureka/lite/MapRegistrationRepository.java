@@ -30,7 +30,7 @@ public class MapRegistrationRepository implements RegistrationRepository {
 	}
 
 	@Override
-	public Iterable<Registration> finalAll() {
+	public Iterable<Registration> findAll() {
 		return this.registrations.values();
 	}
 

@@ -17,13 +17,16 @@
 
 package org.springframework.cloud.netflix.eureka.lite;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.commons.util.InetUtils;
 import org.springframework.cloud.netflix.eureka.CloudEurekaClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.redis.repository.configuration.EnableRedisRepositories;
 
 /**
  * @author Spencer Gibb
@@ -53,4 +56,18 @@ public class EurekaLiteConfiguration {
 		return new EurekaLiteController(eureka, repository, properties);
 	}
 
+	@Configuration
+	@ConditionalOnClass(name = "org.springframework.data.redis.repository.configuration.EnableRedisRepositories")
+	@ConditionalOnProperty(name = "eureka.lite.redis.enabled", matchIfMissing = true)
+	protected static class RedisRepositoryConfiguration {
+
+		@Configuration
+		@EnableRedisRepositories
+		protected static class EnableRedisRepositoriesConfiguration {
+			@Bean
+			public RegistrationRepository registrationRepository(Eureka eureka, RedisCrudRepository repo) {
+				return new RedisRegistrationRepository(repo, eureka);
+			}
+		}
+	}
 }
