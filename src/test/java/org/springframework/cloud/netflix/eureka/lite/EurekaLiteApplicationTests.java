@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.netflix.appinfo.InstanceInfo;
+import com.netflix.appinfo.InstanceInfo.InstanceStatus;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasSize;
@@ -78,15 +79,13 @@ public class EurekaLiteApplicationTests {
 		}
 
 		@Override
-		public Registration register(Application application) {
+		public InstanceInfo register(Application application) {
 			InstanceInfo instanceInfo = getInstanceInfo(application);
-			InstanceInfo.InstanceStatus status = InstanceInfo.InstanceStatus.UP;
+			InstanceStatus status = InstanceStatus.UP;
 			if (application.getInstance_id().endsWith("down")) {
-				status = InstanceInfo.InstanceStatus.DOWN;
+				status = InstanceStatus.DOWN;
 			}
-			ApplicationStatus applicationStatus = new ApplicationStatus(application, status);
-			Registration registration = new Registration(instanceInfo, applicationStatus);
-			return registration;
+			return instanceInfo;
 		}
 
 		@Override

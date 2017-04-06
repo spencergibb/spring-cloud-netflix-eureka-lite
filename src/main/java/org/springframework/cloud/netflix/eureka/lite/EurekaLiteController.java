@@ -33,12 +33,14 @@ public class EurekaLiteController {
 	}
 
 	@RequestMapping(path = "/apps", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<RegistrationDTO> register(@Valid @RequestBody Application application, HttpServletRequest request) throws Exception {
-		Registration registration = this.eureka.register(application);
+	public ResponseEntity<Registration> register(@Valid @RequestBody Application application, HttpServletRequest request) throws Exception {
+		InstanceInfo instanceInfo = this.eureka.register(application);
 
 		URI location = new URI(request.getRequestURI() + "/" + application.getName() + "/" + application.getInstance_id());
-		RegistrationDTO dto = new RegistrationDTO(registration);
-		return ResponseEntity.created(location).body(dto);
+		Registration registration = new Registration();
+		registration.setApplication(application);
+		registration.update(instanceInfo);
+		return ResponseEntity.created(location).body(registration);
 	}
 
 	@RequestMapping(path = "/apps/{name}/{instanceId}", method = RequestMethod.DELETE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -49,30 +51,29 @@ public class EurekaLiteController {
 	}
 
 	@RequestMapping(path = "/apps/{name}/{instanceId}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<RegistrationDTO> getInstance(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId) {
-		RegistrationDTO dto = this.eureka.getInstance(name, instanceId);
-		return ResponseEntity.ok(dto);
+	public ResponseEntity<Registration> getInstance(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId) {
+		Registration registration = this.eureka.getRegistration(name, instanceId);
+		return ResponseEntity.ok(registration);
 	}
 
 	@RequestMapping(path = "/apps/{name}/{instanceId}", method = RequestMethod.PUT, produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity renew(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId,
-								@RequestBody RegistrationDTO dto) {
-		InstanceInfo instanceInfo = this.eureka.getInstanceInfo(dto.getApplication(),
-				dto.getLastUpdatedTimestamp(), dto.getLastDirtyTimestamp());
-		Registration registration = new Registration(instanceInfo, new ApplicationStatus(dto.getApplication(), dto.getInstanceStatus()));
-		this.eureka.renew(registration);
+								@RequestBody Registration registration) {
+		InstanceInfo instanceInfo = this.eureka.getInstanceInfo(registration.getApplication(),
+				registration.getLastUpdatedTimestamp(), registration.getLastDirtyTimestamp());
+		this.eureka.renew(instanceInfo);
 
 		return ResponseEntity.ok().build();
 	}
 
 
 	@RequestMapping(path = "/apps", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-	public Map<String, List<RegistrationDTO>> listApps() {
+	public Map<String, List<Registration>> listApps() {
 		return this.eureka.getApplications();
 	}
 
 	@RequestMapping(path = "/apps/{name}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-	public Collection<RegistrationDTO> listApps(@PathVariable("name") String name) {
-		return this.eureka.getInstances(name);
+	public Collection<Registration> listApps(@PathVariable("name") String name) {
+		return this.eureka.getRegistrations(name);
 	}
 }

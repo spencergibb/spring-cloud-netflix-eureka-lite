@@ -56,19 +56,17 @@ public class Eureka implements ApplicationContextAware {
 		this.transport = createTransport();
 	}
 
-	public Registration register(Application application) {
+	public InstanceInfo register(Application application) {
 		long start = System.currentTimeMillis();
 		log.debug("Starting registration of {}", application);
 		InstanceInfo instanceInfo = getInstanceInfo(application);
 
-		Registration registration = new Registration(instanceInfo, application);
-
 		long duration = (System.currentTimeMillis() - start) ;
 		log.debug("Created registration for {} in {} ms", application, duration);
 
-		register(registration);
+		register(instanceInfo);
 
-		return registration;
+		return instanceInfo;
 	}
 
 	public InstanceInfo getInstanceInfo(Application application, long lastUpdatedTimestamp, long lastDirtyTimestamp) {
@@ -153,15 +151,14 @@ public class Eureka implements ApplicationContextAware {
 	/**
 	 * Renew with the eureka service by making the appropriate REST call
 	 */
-	public boolean renew(Registration registration) {
-		InstanceInfo instanceInfo = registration.getInstanceInfo();
+	public boolean renew(InstanceInfo instanceInfo) {
 		EurekaHttpResponse<InstanceInfo> httpResponse;
 		try {
 			httpResponse = this.transport.getEurekaHttpClient().sendHeartBeat(instanceInfo.getAppName(), instanceInfo.getId(), instanceInfo, null);
 			log.debug("EurekaLite_{}/{} - Heartbeat status: {}", instanceInfo.getAppName(), instanceInfo.getId(), httpResponse.getStatusCode());
 			if (httpResponse.getStatusCode() == HttpStatus.NOT_FOUND.value()) {
 				log.info("EurekaLite_{}/{} - Re-registering apps/{}", instanceInfo.getAppName(), instanceInfo.getId(), instanceInfo.getAppName());
-				return register(registration);
+				return register(instanceInfo);
 			}
 			return httpResponse.getStatusCode() == HttpStatus.OK.value();
 		} catch (Exception e) {
@@ -173,8 +170,7 @@ public class Eureka implements ApplicationContextAware {
 	/**
 	 * Register with the eureka service by making the appropriate REST call.
 	 */
-	protected boolean register(Registration registration) {
-		InstanceInfo instanceInfo = registration.getInstanceInfo();
+	protected boolean register(InstanceInfo instanceInfo) {
 		log.info("EurekaLite_{}/{}: registering service...", instanceInfo.getAppName(), instanceInfo.getId());
 		EurekaHttpResponse<Void> httpResponse;
 		try {
@@ -199,49 +195,49 @@ public class Eureka implements ApplicationContextAware {
 		this.transport.shutdown();
 	}
 
-	public RegistrationDTO getInstance(String appName, String instanceId) {
+	public Registration getRegistration(String appName, String instanceId) {
 		EurekaHttpResponse<InstanceInfo> response = this.transport.getEurekaHttpClient().getInstance(appName, instanceId);
 		//TODO: error handling and logging
 		InstanceInfo instanceInfo = response.getEntity();
 
-		RegistrationDTO dto = getDTO(instanceInfo);
-		return dto;
+		Registration registration = getRegistration(instanceInfo);
+		return registration;
 	}
 
-	protected RegistrationDTO getDTO(InstanceInfo instanceInfo) {
+	protected Registration getRegistration(InstanceInfo instanceInfo) {
 		Application application = new Application(instanceInfo.getAppName(), instanceInfo.getInstanceId(), instanceInfo.getHostName(), instanceInfo.getPort());
 
-		RegistrationDTO dto = new RegistrationDTO();
-		dto.setApplication(application);
-		dto.update(instanceInfo);
-		return dto;
+		Registration registration = new Registration();
+		registration.setApplication(application);
+		registration.update(instanceInfo);
+		return registration;
 	}
 
-	public List<RegistrationDTO> getInstances(String appName) {
+	public List<Registration> getRegistrations(String appName) {
 		EurekaHttpResponse<com.netflix.discovery.shared.Application> response = this.transport.getEurekaHttpClient().getApplication(appName);
 		//TODO: error handling and logging
 		com.netflix.discovery.shared.Application application = response.getEntity();
 
-		return getDTOS(application);
+		return getRegistrations(application);
 	}
 
-	protected List<RegistrationDTO> getDTOS(com.netflix.discovery.shared.Application application) {
-		ArrayList<RegistrationDTO> dtos = new ArrayList<>();
+	protected List<Registration> getRegistrations(com.netflix.discovery.shared.Application application) {
+		ArrayList<Registration> registrations = new ArrayList<>();
 		for (InstanceInfo instanceInfo : application.getInstances()) {
-			dtos.add(getDTO(instanceInfo));
+			registrations.add(getRegistration(instanceInfo));
 		}
-		return dtos;
+		return registrations;
 	}
 
-	public Map<String, List<RegistrationDTO>> getApplications() {
+	public Map<String, List<Registration>> getApplications() {
 		//TODO: support regions
 		EurekaHttpResponse<Applications> response = this.transport.getEurekaHttpClient().getApplications();
 		List<com.netflix.discovery.shared.Application> applications = response.getEntity().getRegisteredApplications();
-		LinkedHashMap<String, List<RegistrationDTO>> map = new LinkedHashMap<>();
+		LinkedHashMap<String, List<Registration>> map = new LinkedHashMap<>();
 
 		for (com.netflix.discovery.shared.Application application : applications) {
-			List<RegistrationDTO> dtos = getDTOS(application);
-			map.put(application.getName(), dtos);
+			List<Registration> registrations = getRegistrations(application);
+			map.put(application.getName(), registrations);
 		}
 
 		return map;
