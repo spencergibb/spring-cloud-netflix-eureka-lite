@@ -99,5 +99,6 @@ X-Application-Context: application:8762
 - [X] Delete
 - [X] List
 - [X] @EnableEurekaLite
+- [ ] Tests
 - [ ] Remove Eureka Client
 - [ ] Move to Spring Cloud project layout
