@@ -1,21 +1,13 @@
 package org.springframework.cloud.netflix.eureka.lite;
 
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.junit.Assert.assertThat;
-import static org.mockito.Mockito.mock;
-
 import java.net.URI;
 import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.SpringApplicationConfiguration;
-import org.springframework.boot.test.TestRestTemplate;
-import org.springframework.boot.test.WebIntegrationTest;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.cloud.commons.util.InetUtils;
 import org.springframework.cloud.netflix.eureka.CloudEurekaClient;
 import org.springframework.context.annotation.Bean;
@@ -24,13 +16,21 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.junit4.SpringRunner;
 
 import com.netflix.appinfo.InstanceInfo;
 
-@RunWith(SpringJUnit4ClassRunner.class)
-@SpringApplicationConfiguration(classes = {EurekaLiteApplicationTests.TestConfig.class, EurekaLiteApplication.class })
-@WebIntegrationTest(randomPort = true, value = "eureka.lite.redis.enabled=false")
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.Assert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
+
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes = {EurekaLiteApplicationTests.TestConfig.class, EurekaLiteApplication.class },
+		webEnvironment = RANDOM_PORT)
 public class EurekaLiteApplicationTests {
 
 	@Value("${local.server.port}")
@@ -90,7 +90,7 @@ public class EurekaLiteApplicationTests {
 		}
 
 		@Override
-		public void shutdown(Registration registration) {
+		public void cancel(String appName, String instanceId) {
 			// noop
 		}
 	}

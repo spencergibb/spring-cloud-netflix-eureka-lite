@@ -1,17 +1,13 @@
 package org.springframework.cloud.netflix.eureka.lite;
 
-import static org.springframework.cloud.netflix.eureka.lite.Application.computeRegistrationKey;
-
-import java.io.Closeable;
-import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,102 +16,63 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.netflix.appinfo.InstanceInfo;
+
 /**
  * @author Spencer Gibb
  */
 @RestController
-public class EurekaLiteController implements Closeable {
+public class EurekaLiteController {
 
 	private final Eureka eureka;
-	private final RegistrationRepository registrations;
 	private final EurekaLiteProperties properties;
 
-	public EurekaLiteController(Eureka eureka, RegistrationRepository registrations, EurekaLiteProperties properties) {
+	public EurekaLiteController(Eureka eureka, EurekaLiteProperties properties) {
 		this.eureka = eureka;
-		this.registrations = registrations;
 		this.properties = properties;
 	}
 
 	@RequestMapping(path = "/apps", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity register(@Valid @RequestBody Application application, HttpServletRequest request) throws Exception {
-
-		if (registrations.exists(application.getRegistrationKey())) {
-			return ResponseEntity.status(HttpStatus.CONFLICT).body("Already registered: " + application);
-		}
-
+	public ResponseEntity<RegistrationDTO> register(@Valid @RequestBody Application application, HttpServletRequest request) throws Exception {
 		Registration registration = this.eureka.register(application);
-		this.registrations.save(registration);
 
 		URI location = new URI(request.getRequestURI() + "/" + application.getName() + "/" + application.getInstance_id());
-		return ResponseEntity.created(location).build();
+		RegistrationDTO dto = new RegistrationDTO(registration);
+		return ResponseEntity.created(location).body(dto);
 	}
 
 	@RequestMapping(path = "/apps/{name}/{instanceId}", method = RequestMethod.DELETE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity unregister(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId) {
-		String registrationKey = computeRegistrationKey(name, instanceId);
-		if (!this.registrations.exists(registrationKey)) {
-			return ResponseEntity.notFound().build();
-		}
-
-		Registration registration = this.registrations.findOne(registrationKey);
-		this.eureka.shutdown(registration);
-
-		this.registrations.delete(registrationKey);
+		this.eureka.cancel(name, instanceId);
 
 		return ResponseEntity.noContent().build();
 	}
 
 	@RequestMapping(path = "/apps/{name}/{instanceId}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity getInstance(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId) {
-		String registrationKey = computeRegistrationKey(name, instanceId);
-		if (!this.registrations.exists(registrationKey)) {
-			return ResponseEntity.notFound().build();
-		}
-
-		return ResponseEntity.ok(this.registrations.findOne(registrationKey).getApplicationStatus());
+	public ResponseEntity<RegistrationDTO> getInstance(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId) {
+		RegistrationDTO dto = this.eureka.getInstance(name, instanceId);
+		return ResponseEntity.ok(dto);
 	}
 
 	@RequestMapping(path = "/apps/{name}/{instanceId}", method = RequestMethod.PUT, produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity renew(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId) {
-		String registrationKey = computeRegistrationKey(name, instanceId);
-		if (!this.registrations.exists(registrationKey)) {
-			return ResponseEntity.notFound().build();
-		}
-
-		Registration registration = this.registrations.findOne(registrationKey);
+	public ResponseEntity renew(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId,
+								@RequestBody RegistrationDTO dto) {
+		InstanceInfo instanceInfo = this.eureka.getInstanceInfo(dto.getApplication(),
+				dto.getLastUpdatedTimestamp(), dto.getLastDirtyTimestamp());
+		Registration registration = new Registration(instanceInfo, new ApplicationStatus(dto.getApplication(), dto.getInstanceStatus()));
 		this.eureka.renew(registration);
 
-		return ResponseEntity.ok(registration.getApplicationStatus());
+		return ResponseEntity.ok().build();
 	}
 
 
 	@RequestMapping(path = "/apps", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-	public Collection<ApplicationStatus> listApps() {
-		ArrayList<ApplicationStatus> applications = new ArrayList<>();
-		for (Registration registration : this.registrations.findAll()) {
-			applications.add(registration.getApplicationStatus());
-		}
-		return applications;
+	public Map<String, List<RegistrationDTO>> listApps() {
+		return this.eureka.getApplications();
 	}
 
 	@RequestMapping(path = "/apps/{name}", method = RequestMethod.GET, produces = MediaType.APPLICATION_JSON_VALUE)
-	public Collection<ApplicationStatus> listApps(@PathVariable("name") String name) {
-		ArrayList<ApplicationStatus> applications = new ArrayList<>();
-		for (Registration registration : this.registrations.findAll()) {
-			if (registration.getApplicationName().equals(name)) {
-				applications.add(registration.getApplicationStatus());
-			}
-		}
-		return applications;
-	}
-
-	@Override
-	public void close() throws IOException {
-		if (this.properties.isUnregisterOnShutdown()) {
-			for (Registration registration : this.registrations.findAll()) {
-				this.eureka.shutdown(registration);
-			}
-			this.registrations.deleteAll();
-		}
+	public Collection<RegistrationDTO> listApps(@PathVariable("name") String name) {
+		return this.eureka.getInstances(name);
 	}
 }

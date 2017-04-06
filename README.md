@@ -3,12 +3,12 @@
 Run `EurekaLiteApplication` which has the `@EnableEurekaLite` annotation.
 
 ```
-$ http POST :8762/apps name=myapp instance_id=app1 hostname=localhost port=8081
+$ http --print=b POST :8762/apps name=myapp instance_id=app1 hostname=localhost port=8081 > /tmp/eureka_myapp_app1.json && cat /tmp/eureka_myapp_app1.json 
 $ http POST :8762/apps name=myapp instance_id=app2 hostname=localhost port=8082
 $ http POST :8762/apps name=anotherapp instance_id=anotherapp1 hostname=localhost port=8181
 
 # in another terminal
-$ watch -n30 http PUT :8762/apps/myapp/app1
+$ watch -n30 http --print=b PUT :8762/apps/myapp/app1 < /tmp/eureka_myapp_app1.json 
 
 # eventually anotherapp/anotherapp1 will auto unregister from eureka because it isn't sending heartbeats
 
@@ -94,7 +94,5 @@ X-Application-Context: application:8762
 
 ## Todo
 
-- [X] Repository Interface
 - [X] Distributed Heartbeat
 - [X] @EnableEurekaLite
-- [X] RedisRegistrationRepository

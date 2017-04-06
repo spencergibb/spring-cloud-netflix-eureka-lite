@@ -1,9 +1,14 @@
 package org.springframework.cloud.netflix.eureka.lite;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import com.netflix.discovery.shared.Applications;
 import org.springframework.beans.BeansException;
 import org.springframework.cloud.commons.util.InetUtils;
 import org.springframework.cloud.netflix.eureka.CloudEurekaClient;
@@ -16,10 +21,8 @@ import org.springframework.http.HttpStatus;
 
 import com.netflix.appinfo.InstanceInfo;
 import com.netflix.discovery.EurekaClientConfig;
-import com.netflix.discovery.shared.Applications;
 import com.netflix.discovery.shared.resolver.ClosableResolver;
 import com.netflix.discovery.shared.resolver.EurekaEndpoint;
-import com.netflix.discovery.shared.resolver.aws.ApplicationsResolver;
 import com.netflix.discovery.shared.resolver.aws.AwsEndpoint;
 import com.netflix.discovery.shared.transport.EurekaHttpClient;
 import com.netflix.discovery.shared.transport.EurekaHttpClientFactory;
@@ -98,18 +101,15 @@ public class Eureka implements ApplicationContextAware {
 				transportConfig,
 				transportClientFactory,
 				null,
-				new ApplicationsResolver.ApplicationsSource() {
-					@Override
-					public Applications getApplications(int stalenessThreshold, TimeUnit timeUnit) {
-						long thresholdInMs = TimeUnit.MILLISECONDS.convert(stalenessThreshold, timeUnit);
-						long delay = eurekaClient.getLastSuccessfulRegistryFetchTimePeriod();
-						if (delay > thresholdInMs) {
-							log.info("Local registry is too stale for local lookup. Threshold:{}, actual:{}",
-									thresholdInMs, delay);
-							return null;
-						} else {
-							return eurekaClient.getApplications();
-						}
+				(stalenessThreshold, timeUnit) -> {
+					long thresholdInMs = TimeUnit.MILLISECONDS.convert(stalenessThreshold, timeUnit);
+					long delay = eurekaClient.getLastSuccessfulRegistryFetchTimePeriod();
+					if (delay > thresholdInMs) {
+						log.info("Local registry is too stale for local lookup. Threshold:{}, actual:{}",
+								thresholdInMs, delay);
+						return null;
+					} else {
+						return eurekaClient.getApplications();
 					}
 				}
 		);
@@ -189,15 +189,62 @@ public class Eureka implements ApplicationContextAware {
 		return httpResponse.getStatusCode() == HttpStatus.NO_CONTENT.value();
 	}
 
-	public void shutdown(Registration registration) {
-		InstanceInfo instanceInfo = registration.getInstanceInfo();
+	public void cancel(String appName, String instanceId) {
 		try {
-			EurekaHttpResponse<Void> httpResponse = this.transport.getEurekaHttpClient().cancel(instanceInfo.getAppName(), instanceInfo.getInstanceId());
-			log.info("EurekaLite_{}/{} - deregister  status: {}", instanceInfo.getAppName(), instanceInfo.getId(), httpResponse.getStatusCode());
+			EurekaHttpResponse<Void> httpResponse = this.transport.getEurekaHttpClient().cancel(appName, instanceId);
+			log.info("EurekaLite_{}/{} - deregister  status: {}", appName, instanceId, httpResponse.getStatusCode());
 		} catch (Exception e) {
-			log.error("EurekaLite_"+instanceInfo.getAppName()+"/"+ instanceInfo.getId() + " - de-registration failed " + e.getMessage(), e);
+			log.error("EurekaLite_"+appName+"/"+ instanceId + " - de-registration failed " + e.getMessage(), e);
 		}
 		this.transport.shutdown();
+	}
+
+	public RegistrationDTO getInstance(String appName, String instanceId) {
+		EurekaHttpResponse<InstanceInfo> response = this.transport.getEurekaHttpClient().getInstance(appName, instanceId);
+		//TODO: error handling and logging
+		InstanceInfo instanceInfo = response.getEntity();
+
+		RegistrationDTO dto = getDTO(instanceInfo);
+		return dto;
+	}
+
+	protected RegistrationDTO getDTO(InstanceInfo instanceInfo) {
+		Application application = new Application(instanceInfo.getAppName(), instanceInfo.getInstanceId(), instanceInfo.getHostName(), instanceInfo.getPort());
+
+		RegistrationDTO dto = new RegistrationDTO();
+		dto.setApplication(application);
+		dto.update(instanceInfo);
+		return dto;
+	}
+
+	public List<RegistrationDTO> getInstances(String appName) {
+		EurekaHttpResponse<com.netflix.discovery.shared.Application> response = this.transport.getEurekaHttpClient().getApplication(appName);
+		//TODO: error handling and logging
+		com.netflix.discovery.shared.Application application = response.getEntity();
+
+		return getDTOS(application);
+	}
+
+	protected List<RegistrationDTO> getDTOS(com.netflix.discovery.shared.Application application) {
+		ArrayList<RegistrationDTO> dtos = new ArrayList<>();
+		for (InstanceInfo instanceInfo : application.getInstances()) {
+			dtos.add(getDTO(instanceInfo));
+		}
+		return dtos;
+	}
+
+	public Map<String, List<RegistrationDTO>> getApplications() {
+		//TODO: support regions
+		EurekaHttpResponse<Applications> response = this.transport.getEurekaHttpClient().getApplications();
+		List<com.netflix.discovery.shared.Application> applications = response.getEntity().getRegisteredApplications();
+		LinkedHashMap<String, List<RegistrationDTO>> map = new LinkedHashMap<>();
+
+		for (com.netflix.discovery.shared.Application application : applications) {
+			List<RegistrationDTO> dtos = getDTOS(application);
+			map.put(application.getName(), dtos);
+		}
+
+		return map;
 	}
 
 	@Override
