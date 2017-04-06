@@ -94,5 +94,10 @@ X-Application-Context: application:8762
 
 ## Todo
 
-- [X] Distributed Heartbeat
+- [X] Register
+- [X] Heartbeat
+- [X] Delete
+- [X] List
 - [X] @EnableEurekaLite
+- [ ] Remove Eureka Client
+- [ ] Move to Spring Cloud project layout
