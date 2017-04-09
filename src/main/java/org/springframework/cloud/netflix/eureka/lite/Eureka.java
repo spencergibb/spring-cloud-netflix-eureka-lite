@@ -69,11 +69,11 @@ public class Eureka implements ApplicationContextAware {
 		return instanceInfo;
 	}
 
-	public InstanceInfo getInstanceInfo(Application application, long lastUpdatedTimestamp, long lastDirtyTimestamp) {
-		InstanceInfo instanceInfo = getInstanceInfo(application);
+	public InstanceInfo getInstanceInfo(Registration registration) {
+		InstanceInfo instanceInfo = getInstanceInfo(registration.getApplication());
 		instanceInfo = new InstanceInfo.Builder(instanceInfo)
-				.setLastDirtyTimestamp(lastDirtyTimestamp)
-				.setLastUpdatedTimestamp(lastUpdatedTimestamp)
+				.setLastDirtyTimestamp(registration.getInstance().getLastDirtyTimestamp())
+				.setLastUpdatedTimestamp(registration.getInstance().getLastUpdatedTimestamp())
 				.build();
 		return instanceInfo;
 	}

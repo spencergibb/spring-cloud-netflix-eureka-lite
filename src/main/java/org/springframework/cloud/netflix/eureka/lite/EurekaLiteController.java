@@ -59,8 +59,7 @@ public class EurekaLiteController {
 	@RequestMapping(path = "/apps/{name}/{instanceId}", method = RequestMethod.PUT, produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity renew(@PathVariable("name") String name, @PathVariable("instanceId") String instanceId,
 								@RequestBody Registration registration) {
-		InstanceInfo instanceInfo = this.eureka.getInstanceInfo(registration.getApplication(),
-				registration.getLastUpdatedTimestamp(), registration.getLastDirtyTimestamp());
+		InstanceInfo instanceInfo = this.eureka.getInstanceInfo(registration);
 		this.eureka.renew(instanceInfo);
 
 		return ResponseEntity.ok().build();

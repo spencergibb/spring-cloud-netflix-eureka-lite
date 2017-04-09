@@ -1,6 +1,6 @@
 package org.springframework.cloud.netflix.eureka.lite;
 
-import javax.validation.constraints.Min;
+import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 
 import org.springframework.validation.annotation.Validated;
@@ -21,31 +21,20 @@ import lombok.NoArgsConstructor;
 public class Registration {
 
 	@NotNull
+	@Valid
 	private Application application;
 
 	@NotNull
-	private InstanceInfo.InstanceStatus instanceStatus;
-
-	@Min(1)
-	private long lastDirtyTimestamp;
-
-	@Min(1)
-	private long lastUpdatedTimestamp;
+	@Valid
+	private Instance instance;
 
 	public Registration(Registration other) {
 		this.application = other.getApplication();
-		this.instanceStatus = other.getInstanceStatus();
-		this.lastDirtyTimestamp = other.getLastDirtyTimestamp();
-		this.lastUpdatedTimestamp = other.getLastUpdatedTimestamp();
+		this.instance = other.getInstance();
 	}
 
+	//TODO: refactor
 	public void update(InstanceInfo instanceInfo) {
-		if (instanceInfo == null) {
-			//TODO: log warning
-			return;
-		}
-		setInstanceStatus(instanceInfo.getStatus());
-		setLastDirtyTimestamp(instanceInfo.getLastDirtyTimestamp());
-		setLastUpdatedTimestamp(instanceInfo.getLastUpdatedTimestamp());
+		this.instance.update(instanceInfo);
 	}
 }
